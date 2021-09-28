@@ -10,7 +10,7 @@ env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }} # The project containing the CS Bucket
   GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}         # Base 64 encoded authentication service account key
   GCP_BUCKET: ${{ secrets.GCP_BUCKET }}         # Name of the CS Bucket to deploy the files
-  GCP_LB_NAME: ${{ secrets.GCP_LB_NAME }}     # Name of LB. Required for clearning Cloud CDN Cache
+  GCP_LB_NAME: ${{ secrets.GCP_LB_NAME }}       # Name of LB. Required for clearning Cloud CDN Cache
 
 # Jobs to run
 jobs:
@@ -35,7 +35,7 @@ jobs:
         with:
           path: src
           destination: ${{ env.GCP_BUCKET }}
-          parent: false
+          parent: false # Ignores the above path
 
       # - name: Upload static files
       #   uses: google-github-actions/setup-gcloud@master
@@ -48,5 +48,5 @@ jobs:
       - name: Invalidate Cloud CDN Cache
         run: |
           gcloud compute url-maps invalidate-cdn-cache ${{ env.GCP_LB_NAME }} \
-          --path "/src/*"
+          --path "/*"
           
