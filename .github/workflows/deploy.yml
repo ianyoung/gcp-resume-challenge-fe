@@ -1,0 +1,51 @@
+name: Deploy frontend
+
+# Trigger - On every push to the main branch
+on:
+  push:
+    branches: [ main ]
+
+# Environment variables
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }} # The project containing the CS Bucket
+  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}         # Base 64 encoded authentication service account key
+  GCP_BUCKET: ${{ secrets.GCP_BUCKET }}         # Name of the CS Bucket to deploy the files
+  GCP_LB_NAME: ${{ secrets.GCP_LB_NAME }}     # Name of LB. Required for clearning Cloud CDN Cache
+
+# Jobs to run
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      # install and configure the gcloud and gsutil command line tools.
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@master
+        with:
+          project_id: ${GCP_PROJECT_ID}
+          service_account_key: ${GCP_SA_KEY}
+          export_default_credentials: true
+      
+      # I don't think it's possible to set speciality pages with this action(?)
+      - name: Upload files
+        uses: google-github-actions/upload-cloud-storage@main
+        # No need to authenticate again as we did so above.
+        with:
+          path: /src
+          destination: ${GCP_BUCKET}
+
+      # - name: Upload static files
+      #   uses: google-github-actions/setup-gcloud@master
+      #   run: |
+      #     gsutil rsync -R /src/* gs://"${GCP_BUCKET}"
+      #     gsutil web set -m /src/index.html -e /src/404.html gs://${GCP_BUCKET}
+
+      # Ref: https://cloud.google.com/cdn/docs/invalidating-cached-content#invalidating_the_whole_directory
+      # The URL_MAP_NAME in this case is the name of the HTTPS Load Balancer.
+      - name: Invalidate Cloud CDN Cache
+        run: |
+          gcloud compute url-maps invalidate-cdn-cache ${GCP_LB_NAME} \
+          --path "/src/*"
+          
