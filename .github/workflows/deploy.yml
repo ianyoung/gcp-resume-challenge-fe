@@ -24,8 +24,8 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@master
         with:
-          project_id: ${GCP_PROJECT_ID}
-          service_account_key: ${GCP_SA_KEY}
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          service_account_key: ${{ env.GCP_SA_KEY }}
           export_default_credentials: true
       
       # I don't think it's possible to set speciality pages with this action(?)
@@ -34,7 +34,7 @@ jobs:
         # No need to authenticate again as we did so above.
         with:
           path: /src
-          destination: ${GCP_BUCKET}
+          destination: ${{ env.GCP_BUCKET }}
 
       # - name: Upload static files
       #   uses: google-github-actions/setup-gcloud@master
@@ -46,6 +46,6 @@ jobs:
       # The URL_MAP_NAME in this case is the name of the HTTPS Load Balancer.
       - name: Invalidate Cloud CDN Cache
         run: |
-          gcloud compute url-maps invalidate-cdn-cache ${GCP_LB_NAME} \
+          gcloud compute url-maps invalidate-cdn-cache ${{ env.GCP_LB_NAME }} \
           --path "/src/*"
           
