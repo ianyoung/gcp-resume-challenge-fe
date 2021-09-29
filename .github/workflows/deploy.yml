@@ -1,11 +1,16 @@
-name: Deploy frontend
+name: Deploy Frontend
 
-# Trigger - On every push to the main branch
+# Trigger on push or pull requests to the main branch
 on:
   push:
-    branches: [ main ]
+  pull_request:
+    branches:
+      - main # The primary branch (sometimes master)
 
 # Environment variables
+# GitHub Actions actions can not accept environment variables as inputs in the form of $VARIABLE. 
+# You can however use either ${{ secrets.VARIABLE }} or ${{ env.VARIABLE }}
+# Ref: https://github.com/google-github-actions/setup-gcloud/issues/253#issuecomment-749125504
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }} # The project containing the CS Bucket
   GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}         # Base 64 encoded authentication service account key
@@ -20,7 +25,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v2
 
-      # install and configure the gcloud and gsutil command line tools.
+      # Install and configure the gcloud and gsutil command line tools.
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@master
         with:
@@ -28,20 +33,26 @@ jobs:
           service_account_key: ${{ env.GCP_SA_KEY }}
           export_default_credentials: true
       
-      # I don't think it's possible to set speciality pages with this action(?)
-      - name: Upload files
+      # Speciality pages need to be set manually outside of this workflow.
+      # Ref: https://cloud.google.com/storage/docs/hosting-static-website#specialty-pages
+      - name: Upload static files
         uses: google-github-actions/upload-cloud-storage@main
         # No need to authenticate again as we did so above.
         with:
           path: src
           destination: ${{ env.GCP_BUCKET }}
-          parent: false # Ignores the above path
-
+          # To upload a folder to the root of the bucket, you can set parent to false. 
+          # Setting parent to false will omit `path` (above) when uploading to bucket.
+          # Ref: https://github.com/google-github-actions/upload-cloud-storage#upload-to-bucket-root
+          parent: false
+      
+      # Alternative upload step.
+      # Use a run command with setup-gcloud to upload files and set speciality pages
       # - name: Upload static files
       #   uses: google-github-actions/setup-gcloud@master
       #   run: |
-      #     gsutil rsync -R /src/* gs://"${GCP_BUCKET}"
-      #     gsutil web set -m /src/index.html -e /src/404.html gs://${GCP_BUCKET}
+      #     gsutil rsync -R src/* gs://"${{ env.GCP_BUCKET }}"
+      #     gsutil web set -m src/index.html -e src/404.html gs://${{ env.GCP_BUCKET }}
 
       # Ref: https://cloud.google.com/cdn/docs/invalidating-cached-content#invalidating_the_whole_directory
       # The URL_MAP_NAME in this case is the name of the HTTPS Load Balancer.
